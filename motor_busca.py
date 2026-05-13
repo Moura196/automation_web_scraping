@@ -94,6 +94,8 @@ def extrair_produtos(page, limite=10):
     seletores_cards = [
         "div.g-inner-card",
         "div[class_='a-section a-spacing-base desktop-grid-content-view']",
+        "a[class_='a-link-normal s-line-clamp-4 s-link-style a-text-normal']",
+        "div[id='search']",
         "div.sh-dgr__grid-result",
         "div.pla-unit-container",
         "div.i0X6df",
@@ -103,13 +105,16 @@ def extrair_produtos(page, limite=10):
     cards = None
     for sel in seletores_cards:
         loc = page.locator(sel)
+        print(f"======>>> Tentando localizar cards de produtos com seletor: '{sel}' - Encontrados: {loc.count()}")
         if loc.count() > 0:
             cards = loc
             break
 
     if cards is None:
+        print(f"======>>> Nenhum card de produto encontrado com os seletores tentados.")
         return []
 
+    print(cards.count())
     total = min(cards.count(), limite)
     resultados = []
 
@@ -206,6 +211,7 @@ def main():
         if buscar_produto:
             print(f"======>>> Busca por '{termo}' realizada com sucesso.")
             resultados = extrair_produtos(page, limite=10)
+            print(f"======>>> Resultados '{resultados}' retornados.")
         
         if not resultados:
             page.screenshot(path="sem_resultados.png", full_page=True)
