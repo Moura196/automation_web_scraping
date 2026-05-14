@@ -5,9 +5,13 @@ from math import e
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
+import zipfile
+from xml.sax.saxutils import escape
 
 URL_GOOGLE_SHOPPING : str = "https://www.amazon.com.br/?tag=msndesktopsta-20&hvadid=&hvpos=&hvexid={aceid}&hvnetw=o&hvrand=&hvpone=&hvptwo=&hvqmt=e&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=167258&hvtargid=kwd-71331395852319:loc-20&ref=pd_sl_4g0yu04uek_e" #"https://www.google.com/shopping?hl=pt-BR&gl=br"
 
+# Inicializa o navegador e retorna os objetos necessários para interação
 def iniciar_navegador(headless=True):
         p = sync_playwright().start()
         browser = p.chromium.launch(headless=headless)
@@ -27,11 +31,14 @@ def iniciar_navegador(headless=True):
         print(context)
         print(page) """
         return p, browser, context, page
-    
+
+# Abre a página e espera até que o conteúdo esteja carregado    
 def abrir_pagina(page, url):
     page.goto(url, wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(1500)
     
+# Detecta sinais de bloqueio ou CAPTCHA na página, como títulos indicando tráfego incomum ou solicitações
+# de atualização do navegador. Se detectado, salva uma captura de tela para análise posterior.
 def pagina_bloqueada(page):
     titulo = page.title().strip().lower()
     sinais = [
@@ -43,6 +50,8 @@ def pagina_bloqueada(page):
     ]
     return any(s in titulo for s in sinais)
 
+# Realiza a busca pelo termo especificado na página, tentando localizar o campo de busca usando uma 
+# variedade de seletores comuns.
 def buscar_produto(page, termo):
     seletores_busca = [
         "input[name='field-keywords']",
@@ -55,7 +64,7 @@ def buscar_produto(page, termo):
     caixa = None
     for sel in seletores_busca:
         loc = page.locator(sel)
-        print(f"======>>> Tentando localizar caixa de busca com seletor: '{sel}' - Encontrados: {loc.count()}")
+        """ print(f"======>>> Tentando localizar caixa de busca com seletor: '{sel}' - Encontrados: {loc.count()}") """
         if loc.count() > 0:
             caixa = loc.first
             break
@@ -69,7 +78,7 @@ def buscar_produto(page, termo):
 
     # Espera curta por resultados
     page.wait_for_timeout(2500)
-    print(f"======>>> A caixa de busca '{caixa}' foi encontrada.")
+    """ print(f"======>>> A caixa de busca '{caixa}' foi encontrada.") """
     # TODO: Foi encontrada, porém o google traz um reCAPTCHA. 
     # Preciso saber o que deve ser feito para não cair neste bloqueio ou 
     # conseguir sair dele.
@@ -77,6 +86,8 @@ def buscar_produto(page, termo):
 def texto_primeiro(locator, timeout_ms=500):
     try:
         if locator.count() > 0:
+            print(f"======>>> Localizador encontrado: '{locator}' - Extraindo texto...")
+            print(f"======>>> {locator.first.inner_text(timeout=timeout_ms).strip()}")
             return locator.first.inner_text(timeout=timeout_ms).strip()
     except Exception:
         pass
@@ -89,8 +100,24 @@ def href_primeiro(locator):
     except Exception:
         pass
     return ""
-    
-def extrair_produtos(page, limite=10):
+
+def imagem_primeira(locator):
+    try:
+        if locator.count() > 0:
+            img = locator.first
+            return (
+                img.get_attribute("src")
+                or img.get_attribute("data-src")
+                or img.get_attribute("data-lazy-src")
+                or ""
+            )
+    except Exception:
+        pass
+    return ""
+
+# Extrai informações dos produtos listados na página, tentando localizar os cards de produtos usando uma
+# variedade de seletores comuns.
+def extrair_produtos(page, limite=5):
     seletores_cards = [
         "div.g-inner-card",
         "div[class_='a-section a-spacing-base desktop-grid-content-view']",
@@ -105,7 +132,7 @@ def extrair_produtos(page, limite=10):
     cards = None
     for sel in seletores_cards:
         loc = page.locator(sel)
-        print(f"======>>> Tentando localizar cards de produtos com seletor: '{sel}' - Encontrados: {loc.count()}")
+        """ print(f"======>>> Tentando localizar cards de produtos com seletor: '{sel}' - Encontrados: {loc.count()}") """
         if loc.count() > 0:
             cards = loc
             break
@@ -120,19 +147,21 @@ def extrair_produtos(page, limite=10):
 
     for i in range(total):
         card = cards.nth(i)
-        print(f"======>>> Card: {card}")
+        """ print(f"======>>> Card: {card}") """
 
-        nome = texto_primeiro(card.locator("h3, a, h4, [role='heading'], .tAxDx, .Xjkr3b"))
+        nome = texto_primeiro(card.locator("h3, h4, [role='heading'], .tAxDx, .Xjkr3b"))
         preco = texto_primeiro(card.locator(".a8Pemb, .e10twf, span:has-text('R$')"))
         loja = texto_primeiro(card.locator(".aULzUe, .IuHnof, .E5ocAb"))
         link = href_primeiro(card.locator("a"))
+        imagem = imagem_primeira(card.locator("img"))
 
-        if nome: #or preco or loja:
+        if nome or preco or loja:
             resultados.append({
                 "nome": nome,
-                #"preco": preco,
-                #"loja": loja,
-                #"link": link,
+                "preco": preco,
+                "loja": loja,
+                "link": link,
+                "imagem": imagem,
             })
 
     return resultados
@@ -149,6 +178,7 @@ def imprimir_conteudo_site(resultados):
         print(f"   Preço: {item['preco'] or 'N/D'}")
         print(f"   Loja : {item['loja'] or 'N/D'}")
         print(f"   Link : {item['link'] or 'N/D'}")
+        print(f"   Imagem: {item['imagem'] or 'N/D'}")
     
     """ response = requests.get(URL_GOOGLE_SHOPPING)
     response.raise_for_status()
@@ -184,20 +214,22 @@ def imprimir_conteudo_site(resultados):
     print("\n--- Trecho inicial do HTML ---")
     print(html[:800]) """
 
+# Fluxo principal do programa
 def main():
     termo = "celular"
     p, browser, context, page = iniciar_navegador(headless=True)
-    print(f'======>>> {p}')
+    """ print(f'======>>> {p}')
     print(f'======>>> {browser}')
-    print(f'======>>> {context}')
+    print(f'======>>> {context}') """
     response = requests.get(URL_GOOGLE_SHOPPING)
     html = response.text
     site = BeautifulSoup(html, "html.parser")
+    resultados = []
     
     try:
         abrir_pagina(page, URL_GOOGLE_SHOPPING)
-        print(f'======>>> Página aberta: {page}')
-        """ print(f'====== CONTENT ======')
+        """ print(f'======>>> Página aberta: {page}')
+        print(f'====== CONTENT ======')
         print(site.prettify()[:1000])  # Imprime os primeiros 1000 caracteres do conteúdo da página
         print(f'====== CONTENT ======') """
         
@@ -208,10 +240,10 @@ def main():
             return
         
         buscar_produto(page, termo)
-        if buscar_produto:
-            print(f"======>>> Busca por '{termo}' realizada com sucesso.")
-            resultados = extrair_produtos(page, limite=10)
-            print(f"======>>> Resultados '{resultados}' retornados.")
+        """ print(f"======>>> Busca por '{termo}' realizada com sucesso.") """
+        resultados = extrair_produtos(page, limite=10)
+        print("Arquivo Excel salvo: produtos.xlsx")
+        """ print(f"======>>> Resultados '{resultados}' retornados.") """
         
         if not resultados:
             page.screenshot(path="sem_resultados.png", full_page=True)
