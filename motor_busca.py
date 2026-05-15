@@ -9,7 +9,7 @@ import pandas as pd
 import zipfile
 from xml.sax.saxutils import escape
 
-URL_GOOGLE_SHOPPING : str = "https://www.amazon.com.br/?tag=msndesktopsta-20&hvadid=&hvpos=&hvexid={aceid}&hvnetw=o&hvrand=&hvpone=&hvptwo=&hvqmt=e&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=167258&hvtargid=kwd-71331395852319:loc-20&ref=pd_sl_4g0yu04uek_e" #"https://www.google.com/shopping?hl=pt-BR&gl=br"
+URL : str = "https://www.amazon.com.br/?tag=msndesktopsta-20&hvadid=&hvpos=&hvexid={aceid}&hvnetw=o&hvrand=&hvpone=&hvptwo=&hvqmt=e&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=167258&hvtargid=kwd-71331395852319:loc-20&ref=pd_sl_4g0yu04uek_e" #"https://www.google.com/shopping?hl=pt-BR&gl=br"
 
 # Inicializa o navegador e retorna os objetos necessários para interação
 def iniciar_navegador(headless=True):
@@ -221,13 +221,13 @@ def main():
     """ print(f'======>>> {p}')
     print(f'======>>> {browser}')
     print(f'======>>> {context}') """
-    response = requests.get(URL_GOOGLE_SHOPPING)
+    response = requests.get(URL)
     html = response.text
     site = BeautifulSoup(html, "html.parser")
     resultados = []
     
     try:
-        abrir_pagina(page, URL_GOOGLE_SHOPPING)
+        abrir_pagina(page, URL)
         """ print(f'======>>> Página aberta: {page}')
         print(f'====== CONTENT ======')
         print(site.prettify()[:1000])  # Imprime os primeiros 1000 caracteres do conteúdo da página

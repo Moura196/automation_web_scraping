@@ -1,0 +1,8 @@
+{
+  "domain": "amazon.com.br",
+  "sample_urls": [
+    "cadeira. lapis"
+  ],
+  "item_import": "valores_produtos.items.Produto",
+  "output_dir": "valores_produtos/pages"
+}
