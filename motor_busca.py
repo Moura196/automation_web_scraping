@@ -59,7 +59,7 @@ def buscar_produto(page, termo):
         "textarea[name='q']",
         "input[aria-label='Pesquisar']",
         "textarea[aria-label='Pesquisar']",
-    ] # TODO: verificar se existe um seletor mais específico para o google shopping
+    ]
 
     caixa = None
     for sel in seletores_busca:
@@ -79,7 +79,6 @@ def buscar_produto(page, termo):
     # Espera curta por resultados
     page.wait_for_timeout(2500)
     """ print(f"======>>> A caixa de busca '{caixa}' foi encontrada.") """
-    # TODO: Foi encontrada, porém o google traz um reCAPTCHA. 
     # Preciso saber o que deve ser feito para não cair neste bloqueio ou 
     # conseguir sair dele.
     

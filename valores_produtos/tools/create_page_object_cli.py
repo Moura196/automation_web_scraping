@@ -43,12 +43,17 @@ def main():
         "output_dir": outdir,
     }
 
-    cfg_path = Path("page_object_config.json")
-    cfg_path.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))
+    # Write config to repository root `page_object_config.json`
+    project_root = Path(__file__).resolve().parents[2]
+    cfg_path = project_root / "page_object_config.json"
+    cfg_path.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Wrote config to {cfg_path}")
 
     # Ensure output dir exists
+    # Create output directory relative to project root when a relative path is provided
     out_path = Path(outdir)
+    if not out_path.is_absolute():
+        out_path = project_root / out_path
     out_path.mkdir(parents=True, exist_ok=True)
 
     # Create a stub page object file
