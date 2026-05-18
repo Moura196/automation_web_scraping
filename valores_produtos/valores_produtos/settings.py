@@ -30,3 +30,8 @@ PLAYWRIGHT_BROWSER_TYPE = "chromium"
 
 # Optional launch options
 PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
+
+# Export pipeline: collect items and write CSV via pandas
+ITEM_PIPELINES = {
+    "valores_produtos.pipelines.PandasExportPipeline": 300,
+}

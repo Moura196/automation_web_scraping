@@ -1,0 +1,1 @@
+# TODO: não há spider para executar coletando páginas.
