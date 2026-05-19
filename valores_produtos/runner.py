@@ -43,7 +43,7 @@ def process_file(input_path, query_column, rows=None, output_dir=None, timeout=3
     if len(queries) == 0:
         raise ValueError("Nenhuma query encontrada na coluna selecionada")
 
-    temp_csvs = []
+    temp_results = []
     for idx, q in enumerate(queries):
         logging.info(f"[{idx+1}/{len(queries)}] Executando query: {q}")
         cmd = [sys.executable, "-m", "scrapy", "crawl", "amazon_search", "-a", f"query={q}"]
@@ -60,7 +60,7 @@ def process_file(input_path, query_column, rows=None, output_dir=None, timeout=3
                 if os.path.exists(dest):
                     os.remove(dest)
                 shutil.move(src, dest)
-                temp_csvs.append(dest)
+                temp_results.append((dest, q))
             except Exception as e:
                 logging.exception("Falha ao mover CSV de saída")
         else:
@@ -69,20 +69,49 @@ def process_file(input_path, query_column, rows=None, output_dir=None, timeout=3
         # pequeno delay para reduzir pressão
         time.sleep(1.0)
 
-    if len(temp_csvs) == 0:
+    if len(temp_results) == 0:
         raise RuntimeError("Nenhum resultado foi gerado para as queries fornecidas")
 
-    # consolidar CSVs
-    dfs = []
-    for p in temp_csvs:
-        try:
-            dfs.append(pd.read_csv(p))
-        except Exception:
-            logging.exception(f"Falha ao ler {p}")
-
-    combined = pd.concat(dfs, ignore_index=True)
+    # Escrever workbook com uma aba por produto e uma aba combinada
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_xlsx = os.path.join(output_dir, f"results_{timestamp}.xlsx")
-    combined.to_excel(out_xlsx, index=False)
-    logging.info(f"Resultados consolidados em: {out_xlsx}")
+
+    def _sanitize_sheet_name(name: str, idx: int) -> str:
+        # Excel sheet name limits: max 31 chars, cannot contain :\\/?*[]
+        illegal = r"\\/:?*[]"
+        s = str(name)
+        for ch in illegal:
+            s = s.replace(ch, "-")
+        s = s.strip()
+        if len(s) == 0:
+            s = f"sheet_{idx+1}"
+        if len(s) > 30:
+            s = s[:30]
+        # ensure uniqueness by appending index if necessary
+        return f"{s}_{idx+1}" if len(s) <= 30 else f"{s[:26]}_{idx+1}"
+
+    dfs_for_combined = []
+    with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
+        for i, (csv_path, q) in enumerate(temp_results):
+            try:
+                dfi = pd.read_csv(csv_path)
+            except Exception:
+                logging.exception(f"Falha ao ler {csv_path}")
+                continue
+            sheet_name = _sanitize_sheet_name(q, i)
+            # Write sheet for this query
+            try:
+                dfi.to_excel(writer, sheet_name=sheet_name, index=False)
+            except Exception:
+                logging.exception(f"Falha ao escrever sheet '{sheet_name}'")
+            dfs_for_combined.append(dfi)
+
+        # combined sheet
+        try:
+            combined = pd.concat(dfs_for_combined, ignore_index=True)
+            combined.to_excel(writer, sheet_name="combined", index=False)
+        except Exception:
+            logging.exception("Falha ao escrever sheet combined")
+
+    logging.info(f"Resultados escritos em: {out_xlsx}")
     return out_xlsx

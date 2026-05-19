@@ -5,3 +5,4 @@ requests
 scrapy
 scrapy-playwright
 streamlit
+openpyxl
