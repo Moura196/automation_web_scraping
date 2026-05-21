@@ -7,3 +7,4 @@ scrapy-playwright
 streamlit
 openpyxl
 scrapy_poet
+zyte_common_items
