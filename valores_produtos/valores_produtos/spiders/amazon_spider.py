@@ -14,10 +14,10 @@ class AmazonSearchSpider(Spider):
         yield Request(url, meta={"playwright": True}, callback=self.parse, dont_filter=True)
 
     def parse(self, response):
-        """ self.logger.info("Response status: %s", response.status)
+        self.logger.info("Response status: %s", response.status)
         self.logger.info("Response URL: %s", response.url)
         snippet = response.text[:1000].replace("\n", " ").replace("\r", " ")
-        self.logger.info("HTML snippet: %s", snippet) """
+        self.logger.info("HTML snippet: %s", snippet)
 
         # Reuse the existing page object implementation for extraction
         try:
