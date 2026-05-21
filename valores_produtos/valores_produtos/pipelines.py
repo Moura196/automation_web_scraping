@@ -1,4 +1,5 @@
 from pathlib import Path
+from dataclasses import asdict, is_dataclass
 import re
 import pandas as pd
 
@@ -36,7 +37,10 @@ class PandasExportPipeline:
 			return None
 
 	def process_item(self, item):
-		data = dict(item)
+		if is_dataclass(item):
+			data = asdict(item)
+		else:
+			data = dict(item)
 		data["preco"] = self._coerce_price(data.get("preco"))
 		self.items.append(data)
 		return item
