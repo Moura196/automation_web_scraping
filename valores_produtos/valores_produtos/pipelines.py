@@ -1,26 +1,64 @@
 from pathlib import Path
+import re
 import pandas as pd
 
 
 class PandasExportPipeline:
 	"""Collect scraped items and export them to CSV using pandas when the spider closes."""
 
-	def open_spider(self, spider):
-		self.items = []
+	@classmethod
+	def from_crawler(cls, crawler):
+		pipeline = cls()
+		pipeline.crawler = crawler
+		return pipeline
 
-	def process_item(self, item, spider):
-		self.items.append(dict(item))
+	def open_spider(self):
+		self.items = []
+		self.spider = getattr(self, "crawler", None).spider if getattr(self, "crawler", None) else None
+
+	def _coerce_price(self, value):
+		if value is None:
+			return None
+		if isinstance(value, (int, float)):
+			return float(value)
+
+		text = str(value).strip()
+		if not text:
+			return None
+
+		cleaned = re.sub(r"[^0-9,\.]", "", text)
+		if "," in cleaned:
+			cleaned = cleaned.replace(".", "").replace(",", ".")
+
+		try:
+			return float(cleaned)
+		except Exception:
+			return None
+
+	def process_item(self, item):
+		data = dict(item)
+		data["preco"] = self._coerce_price(data.get("preco"))
+		self.items.append(data)
 		return item
 
-	def close_spider(self, spider):
+	def close_spider(self):
 		if not self.items:
-			spider.logger.info("No items scraped; skipping export.")
+			if self.spider:
+				self.spider.logger.info("No items scraped; skipping export.")
+			else:
+				print("No items scraped; skipping export.")
 			return
 
 		df = pd.DataFrame(self.items)
+		if "preco" in df.columns:
+			df["preco"] = pd.to_numeric(df["preco"], errors="coerce")
 		out_dir = Path.cwd() / "output"
 		out_dir.mkdir(parents=True, exist_ok=True)
-		fname = out_dir / f"{spider.name}_products.csv"
+		spider_name = self.spider.name if self.spider else "spider"
+		fname = out_dir / f"{spider_name}_products.csv"
 		df.to_csv(fname, index=False)
-		spider.logger.info(f"Wrote {len(self.items)} items to {fname}")
+		if self.spider:
+			self.spider.logger.info(f"Wrote {len(self.items)} items to {fname}")
+		else:
+			print(f"Wrote {len(self.items)} items to {fname}")
 # TODO: não implementa transformações/export.
