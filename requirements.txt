@@ -6,3 +6,4 @@ scrapy
 scrapy-playwright
 streamlit
 openpyxl
+scrapy_poet
