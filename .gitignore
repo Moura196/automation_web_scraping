@@ -11,61 +11,99 @@ build/
 dist/
 *.egg-info/
 .eggs/
-
-# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-env.bak/
-
-# Pytest cache
-.pytest_cache/
-
-# mypy
-.mypy_cache/
-
-# PyInstaller
-_pyinstaller/
+eggs/
+parts/
+sdist/
+wheels/
+share/python-wheels/
+*.egg
+pip-wheel-metadata/
 
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-htmlcov/
 .tox/
+.nox/
 .coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
 coverage.xml
+coverage/
+htmlcov/
+*.cover
+hypothesis/
+nunit-report.xml
 
-# Jupyter
-.ipynb_checkpoints/
+# Type checkers
+.pyre/
+.mypy_cache/
 
 # IDEs and editors
-.vscode/
 .idea/
+.vscode/
 *.sublime-workspace
 *.sublime-project
+
+# Virtual environments
+.venv/
+venv/
+env/
+env.bak/
+venv.bak/
 
 # OS files
 .DS_Store
 Thumbs.db
+.Spotlight-V100
+.Trashes
 
-# Editor temporary files
-*~
-*.swp
+# Logs
+*.log
+logs/
 
-# Environment variables files
+# Secrets / environment variables
 .env
 .env.*
+env.local
+local_settings.py
 
-# Logs and output
-logs/
-*.log
+# Scrapy
+.scrapy/
+
+# Playwright / browser artifacts
+.playwright/
+.cache/ms-playwright/
+playwright-report/
+
+# Browser driver binaries
+chromedriver*
+geckodriver*
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+*.swp
+~$*
+
+# SQLite db
+*.sqlite3
+
+# Project output
 valores_produtos/output/
 
-# Playwright browsers cache
-.playwright/
-
-# Wheel metadata
-pip-wheel-metadata/
+# PyInstaller
+_pyinstaller/
