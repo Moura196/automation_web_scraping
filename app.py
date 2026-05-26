@@ -5,32 +5,49 @@ import pandas as pd
 
 from valores_produtos import runner
 
+# Used to set the configuration of the Streamlit page. In this case, sets the title of the web page
 st.set_page_config(page_title="Busca de Produtos", layout="wide")
 st.title("Busca de Produtos — Upload Excel → Busca → Download")
 
-uploaded = st.file_uploader("Envie um arquivo .xlsx ou .csv com a lista de produtos", type=["xlsx", "csv"])
+# Create a file uploader widget using Streamlit. The `st.file_uploader` function allow the user to upload a file with 
+# the specified file types (in this case,".xlsx").
+uploaded = st.file_uploader("Envie um arquivo .xlsx com a lista de produtos e suas características", type=["xlsx"])
 if not uploaded:
     st.info("Faça upload de um arquivo para começar.")
     st.stop()
 
+# Handling the uploaded file in the Streamlit app. Here's a breakdown of what each line is doing:
+# Extracting the file extension from the name of the uploaded file.
 suffix = os.path.splitext(uploaded.name)[1]
+# Creating a temporary file using the `tempfile` module in Python. Here's a breakdown of what it's doing:
 tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+# Writing the contents of the uploaded file into the temporary file. Necessary to save the uploaded file data into a 
+# temporary file so that it can be processed further, using pandas for analysis or any other operations required in the 
+# Streamlit application.
 tmp.write(uploaded.getvalue())
+# Flush the temporary file to ensure buffered data is written to disk.
+# This should be called after tmp.write().
 tmp.flush()
+# Assigning the file path of the temporary file created to the variable `tmp_path`. 
+# Ensures that the file path of the temporary file is stored in the `tmp_path` variable for further 
+# processing, such as reading its contents using pandas for analysis or any other operations required in the 
+# Streamlit application.
 tmp_path = tmp.name
 
+# This block of code is responsible for reading the uploaded file based on its extension. Here's a
+# breakdown of what it does:
 try:
-    if suffix.lower() == ".csv":
-        df = pd.read_csv(tmp_path)
-    else:
-        df = pd.read_excel(tmp_path)
+    df = pd.read_excel(tmp_path)
 except Exception as e:
     st.error(f"Erro ao ler o arquivo: {e}")
     st.stop()
 
+# Displaying a message indicating that the file has been loaded successfully, along with the detected columns in the 
+# uploaded Excel file. It shows the user the columns present in the DataFrame `df` by listing them.
 st.write("Arquivo carregado — colunas detectadas:", list(df.columns))
 query_col = st.selectbox("Selecione a coluna que contém o termo de busca", options=list(df.columns))
 
+# Creating a number input widget using Streamlit.
 max_rows = st.number_input("Limitar número de linhas (0 = todas)", min_value=0, value=0, step=1)
 
 if st.button("Executar busca"):

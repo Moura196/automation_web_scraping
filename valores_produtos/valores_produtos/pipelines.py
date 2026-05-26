@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class PandasExportPipeline:
-	"""Collect scraped items and export them to CSV using pandas when the spider closes."""
+	"""Collect scraped items and export them to EXCEL using pandas when the spider closes."""
 
 	@classmethod
 	def from_crawler(cls, crawler):
@@ -59,10 +59,9 @@ class PandasExportPipeline:
 		out_dir = Path.cwd() / "output"
 		out_dir.mkdir(parents=True, exist_ok=True)
 		spider_name = self.spider.name if self.spider else "spider"
-		fname = out_dir / f"{spider_name}_products.csv"
-		df.to_csv(fname, index=False)
+		fname = out_dir / f"{spider_name}_products.xlsx"
+		df.to_excel(fname, index=False)
 		if self.spider:
 			self.spider.logger.info(f"Wrote {len(self.items)} items to {fname}")
 		else:
 			print(f"Wrote {len(self.items)} items to {fname}")
-# TODO: não implementa transformações/export.
