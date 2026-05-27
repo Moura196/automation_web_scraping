@@ -45,10 +45,6 @@ except Exception as e:
 # Displaying a message indicating that the file has been loaded successfully, along with the detected columns in the 
 # uploaded Excel file. It shows the user the columns present in the DataFrame `df` by listing them.
 st.write("Arquivo carregado — colunas detectadas:", list(df.columns))
-query_col = st.selectbox("Selecione a coluna que contém o termo de busca", options=list(df.columns))
-
-# Creating a number input widget using Streamlit.
-max_rows = st.number_input("Limitar número de linhas (0 = todas)", min_value=0, value=0, step=1)
 
 if st.button("Executar busca"):
     rows = df if max_rows == 0 else df.head(int(max_rows))
