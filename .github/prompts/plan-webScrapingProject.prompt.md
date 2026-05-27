@@ -23,10 +23,10 @@ Refatorar e melhorar a aplicação Streamlit atual para:
 ### 1.1 Estratégia de Web Scraping
 - **Primária**: Google Shopping (maior cobertura, melhor UX)
 - **Fallback**: Mercado Livre (se Google Shopping bloqueado)
-- **Método**: APIs oficiais com rate limiting (prioridade sobre scrapy direto)
+- **Método**: APIs oficiais com rate limiting (prioridade sobre scrapy direto - Priorizar estratégias gratúitas antes de considerar soluções pagas.)
   - Google Shopping API (se disponível) ou Custom Search API
   - Mercado Livre tem API pública com documentação
-- **Evitar bloqueios**: Usar headers realistas, delays entre requisições, múltiplos IPs se necessário (proxy gratuito ou pago)
+- **Evitar bloqueios**: Usar headers realistas, delays entre requisições, múltiplos IPs se necessário (proxy gratuito). Priorizar estratégias gratúitas antes de considerar soluções pagas.
 
 ### 1.2 Fluxo de Processamento
 ```
@@ -42,23 +42,23 @@ Para cada linha:
   - Se bloqueado → tentar fallback
   - Registrar em log detalhado
     ↓
-Consolidar resultados em .xlsx único
+Consolidar resultados em .xlsx único com uma aba para cada produto 
 ```
 
 ### 1.3 Formato de Planilha (Entrada)
 **Obrigatório**:
 - `Produto` (coluna A) — Nome do produto
-- `Descrição 1` a `Descrição 5` (colunas B-F) — Características opcionais
+- `Descrição 1` a `Descrição 5` ou mais (colunas B-F...) — Características opcionais
 
 **Opcional**:
 - Qualquer outra coluna será ignorada (ou mapeável)
 
 **Exemplo esperado** (usuário recebe template):
-| Produto | Descrição 1 | Descrição 2 | Descrição 3 | Descrição 4 | Descrição 5 |
-|---------|-------------|-------------|-------------|-------------|-------------|
-| Luva | correr | 20mm | pvc | | |
-| Açúcar | cristal | branco | 1kg | | |
-| Barhante | 85% | algodão | 4/6 | fios | 600g |
+| Produto | Descrição 1 | Descrição 2 | Descrição 3 | Descrição 4 | Descrição 5 |...
+|---------|-------------|-------------|-------------|-------------|-------------|...
+| Luva | correr | 20mm | pvc | | |...
+| Açúcar | cristal | branco | 1kg | | |...
+| Barhante | 85% | algodão | 4/6 | fios | 600g |...
 
 ### 1.4 Formato de Planilha (Saída)
 **Colunas obrigatórias**:
@@ -66,14 +66,14 @@ Consolidar resultados em .xlsx único
 2. `Valor (R$)` — Numérico, tratado para float
 3. `Link` — URL do produto encontrado
 4. `Plataforma` — "Google Shopping" ou "Mercado Livre" (rastreabilidade)
+5. `Data da Busca` — (timestamp)
 
 **Colunas opcionais** (futuro):
 - `Disponibilidade` (sim/não/verificar)
-- `Data da Busca` (timestamp)
 
 ### 1.5 Logging Estruturado
 **Nível**: Detalhado (cada produto, bloqueios, tentativas)  
-**Formato**: JSON estruturado ou plaintext + line-based
+**Formato**: JSON estruturado
 **Canais**:
 1. **Console** (Streamlit: `st.success()`, `st.warning()`, `st.error()`)
 2. **Arquivo**: `logs/app.log` (persistente, para análise pós-execução)
@@ -171,7 +171,7 @@ Web Scraping Project/
 
 ### **Fase 3: Web Scraping** [~4-6 horas — maior esforço]
 **Opção A (Recomendada - APIs)**:
-1. Investigar Google Shopping API / Custom Search API (pode ser pago)
+1. Investigar Google Shopping API / Custom Search API (pode ser pago -> priorizar alternativas gratuitas)
 2. Se não viável → usar SerpAPI ou Similar Web API (freemium)
 3. Criar `src/google_shopping_scraper.py`
 4. Criar `src/mercado_livre_scraper.py` (usar API pública)
