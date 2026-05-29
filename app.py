@@ -1,64 +1,226 @@
+"""
+Web Scraping Project - Streamlit Application
+Main UI for product scraping and price search
+"""
+
 import os
 import tempfile
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 
-from valores_produtos import runner
+# Import our modules
+from src.input_handler import load_products_dataframe, is_template_available, get_template_path
+from src.product_query_builder import build_queries_from_dataframe, validate_queries
+from src.output_handler import get_default_output_path, export_results_to_excel, ScrapingResult
+from src.logger import setup_logger
 
-# Used to set the configuration of the Streamlit page. In this case, sets the title of the web page
-st.set_page_config(page_title="Busca de Produtos", layout="wide")
-st.title("Busca de Produtos — Upload Excel → Busca → Download")
+# Setup logging
+logger = setup_logger(__name__, log_file='logs/app.log')
 
-# Create a file uploader widget using Streamlit. The `st.file_uploader` function allow the user to upload a file with 
-# the specified file types (in this case,".xlsx").
-uploaded = st.file_uploader("Envie um arquivo .xlsx com a lista de produtos e suas características", type=["xlsx"])
-if not uploaded:
-    st.info("Faça upload de um arquivo para começar.")
+# Page configuration
+st.set_page_config(
+    page_title="Busca de Produtos",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Title and description
+st.title("🔍 Busca de Produtos — Upload Excel → Busca → Download")
+st.markdown("""
+Carregue uma planilha com produtos e características para buscar preços em plataformas de e-commerce.
+""")
+
+# Sidebar - Help and template
+with st.sidebar:
+    st.header("📋 Instruções")
+    
+    st.markdown("""
+    ### Formato esperado:
+    - **Coluna A**: Produto (obrigatório)
+    - **Colunas B-K**: Descrição 1 até Descrição 10 (opcionais)
+    
+    ### Exemplo:
+    | Produto | Descrição 1 | Descrição 2 |
+    |---------|-------------|------------|
+    | Luva    | correr      | 20mm       |
+    | Meia    | algodão     |            |
+    
+    ✅ Suporta 1 a 10 descrições  
+    ⚠️ Avisos em caso de inconsistências  
+    ✅ Processa mesmo com avisos
+    """)
+    
+    st.divider()
+    
+    # Template download
+    if is_template_available():
+        st.subheader("📥 Template")
+        with open(get_template_path(), 'rb') as f:
+            st.download_button(
+                label="Baixar template",
+                data=f.read(),
+                file_name="template_entrada.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    
+    st.divider()
+    
+    st.subheader("⚙️ Configurações")
+    max_rows = st.number_input(
+        "Limitar a quantas linhas?",
+        min_value=0,
+        value=0,
+        help="0 = sem limite"
+    )
+
+# Main content
+st.header("1️⃣ Carregue seu arquivo")
+
+# File uploader
+uploaded_file = st.file_uploader(
+    "Envie um arquivo .xlsx",
+    type=["xlsx"],
+    help="Arquivo com produtos e características"
+)
+
+if not uploaded_file:
+    st.info("👈 Use o template para criar sua planilha. Em seguida, faça upload aqui.")
     st.stop()
 
-# Handling the uploaded file in the Streamlit app. Here's a breakdown of what each line is doing:
-# Extracting the file extension from the name of the uploaded file.
-suffix = os.path.splitext(uploaded.name)[1]
-# Creating a temporary file using the `tempfile` module in Python. Here's a breakdown of what it's doing:
-tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-# Writing the contents of the uploaded file into the temporary file. Necessary to save the uploaded file data into a 
-# temporary file so that it can be processed further, using pandas for analysis or any other operations required in the 
-# Streamlit application.
-tmp.write(uploaded.getvalue())
-# Flush the temporary file to ensure buffered data is written to disk.
-# This should be called after tmp.write().
-tmp.flush()
-# Assigning the file path of the temporary file created to the variable `tmp_path`. 
-# Ensures that the file path of the temporary file is stored in the `tmp_path` variable for further 
-# processing, such as reading its contents using pandas for analysis or any other operations required in the 
-# Streamlit application.
-tmp_path = tmp.name
+# Save uploaded file temporarily
+suffix = os.path.splitext(uploaded_file.name)[1]
+tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+tmp_file.write(uploaded_file.getvalue())
+tmp_file.flush()
+tmp_path = tmp_file.name
 
-# This block of code is responsible for reading the uploaded file based on its extension. Here's a
-# breakdown of what it does:
-try:
-    df = pd.read_excel(tmp_path)
-except Exception as e:
-    st.error(f"Erro ao ler o arquivo: {e}")
+logger.info(f"Arquivo carregado: {uploaded_file.name}")
+
+# Process and validate file
+st.header("2️⃣ Validação")
+
+st.info("Validando arquivo...")
+
+df_standardized, warnings_list = load_products_dataframe(tmp_path)
+
+# Show validation results
+if df_standardized is None:
+    st.error("❌ Erro crítico ao processar arquivo")
+    for warning in warnings_list:
+        if warning['level'] == 'critical':
+            st.error(f"**{warning['message']}**")
     st.stop()
 
-# Displaying a message indicating that the file has been loaded successfully, along with the detected columns in the 
-# uploaded Excel file. It shows the user the columns present in the DataFrame `df` by listing them.
-st.write("Arquivo carregado — colunas detectadas:", list(df.columns))
+# Display warnings and info messages
+if warnings_list:
+    st.warning("⚠️ Avisos durante validação:")
+    for warning in warnings_list:
+        if warning['level'] == 'critical':
+            st.error(f"• {warning['message']}")
+        elif warning['level'] == 'warning':
+            st.warning(f"• {warning['message']}")
+        else:  # info
+            st.info(f"• {warning['message']}")
+else:
+    st.success("✓ Arquivo validado sem avisos")
 
-if st.button("Executar busca"):
-    rows = df if max_rows == 0 else df.head(int(max_rows))
-    with st.spinner("Executando buscas — isto pode demorar dependendo do número de consultas..."):
-        try:
-            out_path = runner.process_file(tmp_path, query_col, rows=rows)
-        except Exception as e:
-            st.error(f"Falha na execução: {e}")
-            st.stop()
+# Show data preview
+st.subheader("Dados carregados")
+preview_df = df_standardized.head(10)
 
-    if os.path.exists(out_path):
-        with open(out_path, "rb") as f:
-            data = f.read()
-        st.success("Busca concluída")
-        st.download_button("Baixar resultados (.xlsx)", data, file_name=os.path.basename(out_path))
-    else:
-        st.error("Nenhum resultado gerado.")
+# Remove empty description columns for preview
+non_empty_cols = ['Produto']
+for col in df_standardized.columns[1:]:
+    if df_standardized[col].notna().any():
+        non_empty_cols.append(col)
+
+preview_df = preview_df[non_empty_cols]
+
+st.dataframe(preview_df, use_container_width=True)
+
+st.write(f"✓ {len(df_standardized)} linhas carregadas")
+
+# Apply row limit if specified
+if max_rows > 0:
+    df_to_process = df_standardized.head(max_rows)
+    st.info(f"Limitando a {max_rows} linhas")
+else:
+    df_to_process = df_standardized
+
+# Build queries
+st.header("3️⃣ Construção de Queries")
+
+st.info("Construindo queries de busca...")
+df_with_queries = build_queries_from_dataframe(df_to_process)
+
+# Validate queries
+all_valid, invalid_queries = validate_queries(df_with_queries['Query'].tolist())
+
+if not all_valid:
+    st.warning(f"⚠️ {len(invalid_queries)} queries podem ter problemas de formatação")
+else:
+    st.success(f"✓ {len(df_with_queries)} queries construídas com sucesso")
+
+# Show query preview
+st.subheader("Preview de queries")
+query_preview = df_with_queries[['Produto', 'Query']].head(10)
+st.dataframe(query_preview, use_container_width=True)
+
+# Search execution
+st.header("4️⃣ Execução de Busca")
+
+if st.button("🔍 Executar busca", use_container_width=True, type="primary"):
+    
+    with st.spinner("⏳ Executando buscas... isto pode demorar alguns minutos..."):
+        
+        st.info("Este é um protótipo. Em produção, aqui seria integrada a lógica de scraping.")
+        
+        # TODO: Integrate actual scraping logic here
+        # For now, create dummy results for demonstration
+        
+        st.success("✓ Busca simulada concluída")
+        
+        # Create dummy results for demonstration
+        results = [
+            ScrapingResult(
+                query=row['Query'],
+                preco=29.90 + (idx * 2.5),
+                link=f"https://example.com/produto/{idx}",
+                plataforma="Google Shopping" if idx % 2 == 0 else "Mercado Livre",
+                timestamp=None
+            )
+            for idx, (_, row) in enumerate(df_with_queries.iterrows())
+        ]
+        
+        # Export results
+        output_path = get_default_output_path()
+        from src.output_handler import create_results_dataframe
+        df_results = create_results_dataframe(results)
+        
+        if export_results_to_excel(df_results, str(output_path)):
+            st.success("✓ Resultados exportados com sucesso")
+            
+            # Download button
+            with open(output_path, 'rb') as f:
+                st.download_button(
+                    label="📥 Baixar resultados (.xlsx)",
+                    data=f.read(),
+                    file_name=output_path.name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            
+            # Show results preview
+            st.subheader("Preview de resultados")
+            st.dataframe(df_results.head(20), use_container_width=True)
+        else:
+            st.error("❌ Erro ao exportar resultados")
+
+# Footer
+st.divider()
+st.caption("""
+💡 **Dica**: Este app suporta até 10 características por produto.  
+⚠️ **Avisos não impedem o processamento** - o app sempre tenta processar sua planilha.  
+🔧 **Funcionalidade**: Fase 1 - MVP com estrutura fixa.
+""")
