@@ -82,8 +82,7 @@ def validate_and_parse_structure(file_path: str) -> Tuple[bool, List[ValidationW
         if first_col.strip().lower() != 'produto':
             critical_warning = ValidationWarning(
                 'critical',
-                f"Coluna A se chama '{first_col}', esperado 'Produto'. "
-                f"Deseja continuar processando?"
+                f"Coluna A se chama '{first_col}'. Esperado 'Produto'. "
             )
             warnings.append(critical_warning)
             # Don't return here - give app chance to ask user
@@ -92,7 +91,7 @@ def validate_and_parse_structure(file_path: str) -> Tuple[bool, List[ValidationW
         description_columns = []
         found_descriptions = {}
         
-        for col_idx, col_name in enumerate(df.columns[1:11], start=2):  # Columns B-K
+        for col_idx, col_name in enumerate(df.columns[1:11], start=1):  # Columns B-K
             col_letter = chr(64 + col_idx)  # Convert to letter (B, C, D, ...)
             desc_number = extract_description_number(col_name)
             
@@ -104,7 +103,7 @@ def validate_and_parse_structure(file_path: str) -> Tuple[bool, List[ValidationW
                 warning = ValidationWarning(
                     'warning',
                     f"Coluna {col_letter} se chama '{col_name}', "
-                    f"esperado padrão 'Descrição N'"
+                    f"Padrão esperado 'Descrição N'"
                 )
                 warnings.append(warning)
         

@@ -133,7 +133,7 @@ def extract_description_number(col_name: str) -> int | None:
     col_lower = col_name.lower().strip()
     
     # Check Portuguese variants
-    if col_lower.startswith('descri') or col_lower.startswith('descrição'):
+    if col_lower.__contains__('descrição'):
         # Extract the number at the end
         words = col_lower.split()
         for word in reversed(words):

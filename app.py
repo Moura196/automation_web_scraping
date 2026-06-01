@@ -63,16 +63,6 @@ with st.sidebar:
                 file_name="template_entrada.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-    
-    st.divider()
-    
-    st.subheader("⚙️ Configurações")
-    max_rows = st.number_input(
-        "Limitar a quantas linhas?",
-        min_value=0,
-        value=0,
-        help="0 = sem limite"
-    )
 
 # Main content
 st.header("1️⃣ Carregue seu arquivo")
@@ -101,27 +91,35 @@ logger.info(f"Arquivo carregado: {uploaded_file.name}")
 st.header("2️⃣ Validação")
 
 st.info("Validando arquivo...")
+logger.info("Validando arquivo...")
 
 df_standardized, warnings_list = load_products_dataframe(tmp_path)
 
 # Show validation results
 if df_standardized is None:
     st.error("❌ Erro crítico ao processar arquivo")
+    logger.error("❌ Erro crítico ao processar arquivo")
     for warning in warnings_list:
         if warning['level'] == 'critical':
-            st.error(f"**{warning['message']}**")
+            st.error(f"{warning['message']}")
+            logger.error(f"{warning['message']}")
     st.stop()
 
 # Display warnings and info messages
 if warnings_list:
     st.warning("⚠️ Avisos durante validação:")
+    logger.warning("⚠️ Avisos durante validação:")
     for warning in warnings_list:
         if warning['level'] == 'critical':
             st.error(f"• {warning['message']}")
+            logger.error(f"• {warning['message']}")
+            st.stop()
         elif warning['level'] == 'warning':
             st.warning(f"• {warning['message']}")
+            logger.warning(f"• {warning['message']}")
         else:  # info
             st.info(f"• {warning['message']}")
+    st.stop()
 else:
     st.success("✓ Arquivo validado sem avisos")
 
@@ -137,16 +135,11 @@ for col in df_standardized.columns[1:]:
 
 preview_df = preview_df[non_empty_cols]
 
-st.dataframe(preview_df, use_container_width=True)
+st.dataframe(preview_df, width='stretch')
 
 st.write(f"✓ {len(df_standardized)} linhas carregadas")
 
-# Apply row limit if specified
-if max_rows > 0:
-    df_to_process = df_standardized.head(max_rows)
-    st.info(f"Limitando a {max_rows} linhas")
-else:
-    df_to_process = df_standardized
+df_to_process = df_standardized
 
 # Build queries
 st.header("3️⃣ Construção de Queries")
@@ -165,12 +158,12 @@ else:
 # Show query preview
 st.subheader("Preview de queries")
 query_preview = df_with_queries[['Produto', 'Query']].head(10)
-st.dataframe(query_preview, use_container_width=True)
+st.dataframe(query_preview, width='stretch')
 
 # Search execution
 st.header("4️⃣ Execução de Busca")
 
-if st.button("🔍 Executar busca", use_container_width=True, type="primary"):
+if st.button("🔍 Executar busca", width='stretch', type="primary"):
     
     with st.spinner("⏳ Executando buscas... isto pode demorar alguns minutos..."):
         
@@ -208,12 +201,12 @@ if st.button("🔍 Executar busca", use_container_width=True, type="primary"):
                     data=f.read(),
                     file_name=output_path.name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
+                    width='stretch'
                 )
             
             # Show results preview
             st.subheader("Preview de resultados")
-            st.dataframe(df_results.head(20), use_container_width=True)
+            st.dataframe(df_results.head(20), width='stretch')
         else:
             st.error("❌ Erro ao exportar resultados")
 
