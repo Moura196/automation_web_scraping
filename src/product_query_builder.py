@@ -81,7 +81,6 @@ def build_queries_from_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         queries.append(query)
     
     df['Query'] = queries
-    logger.info(f"✓ {len(queries)} queries construídas")
     
     return df
 

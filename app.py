@@ -119,7 +119,7 @@ if warnings_list:
             logger.warning(f"• {warning['message']}")
         else:  # info
             st.info(f"• {warning['message']}")
-    st.stop()
+            logger.info(f"• {warning['message']}")
 else:
     st.success("✓ Arquivo validado sem avisos")
 
@@ -152,8 +152,10 @@ all_valid, invalid_queries = validate_queries(df_with_queries['Query'].tolist())
 
 if not all_valid:
     st.warning(f"⚠️ {len(invalid_queries)} queries podem ter problemas de formatação")
+    logger.warning(f"⚠️ {len(invalid_queries)} queries podem ter problemas de formatação")
 else:
     st.success(f"✓ {len(df_with_queries)} queries construídas com sucesso")
+    logger.info(f"✓ {len(df_with_queries)} queries construídas com sucesso")
 
 # Show query preview
 st.subheader("Preview de queries")
@@ -193,6 +195,7 @@ if st.button("🔍 Executar busca", width='stretch', type="primary"):
         
         if export_results_to_excel(df_results, str(output_path)):
             st.success("✓ Resultados exportados com sucesso")
+            logger.info("✓ Resultados exportados com sucesso")
             
             # Download button
             with open(output_path, 'rb') as f:
@@ -209,11 +212,12 @@ if st.button("🔍 Executar busca", width='stretch', type="primary"):
             st.dataframe(df_results.head(20), width='stretch')
         else:
             st.error("❌ Erro ao exportar resultados")
+            logger.error("❌ Erro ao exportar resultados")
 
 # Footer
 st.divider()
 st.caption("""
 💡 **Dica**: Este app suporta até 10 características por produto.  
-⚠️ **Avisos não impedem o processamento** - o app sempre tenta processar sua planilha.  
+⚠️ **Avisos do tipo crítico impedem o processamento** - o app sempre tenta processar sua planilha.  
 🔧 **Funcionalidade**: Fase 1 - MVP com estrutura fixa.
 """)
